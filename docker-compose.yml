@@ -1,0 +1,123 @@
+services:
+  # ==========================================
+  # FAZ 1: GÜVENLİ AĞ KATMANI (3x TOR + HAPROXY)
+  # ==========================================
+  tor-node-1:
+    build: ./infra/tor
+    container_name: cti-tor-1
+    restart: unless-stopped
+    networks:
+      - cti_net
+
+  tor-node-2:
+    build: ./infra/tor
+    container_name: cti-tor-2
+    restart: unless-stopped
+    networks:
+      - cti_net
+
+  tor-node-3:
+    build: ./infra/tor
+    container_name: cti-tor-3
+    restart: unless-stopped
+    networks:
+      - cti_net
+
+  haproxy-tor:
+    image: haproxy:2.9-alpine
+    container_name: cti-haproxy-tor
+    restart: unless-stopped
+    volumes:
+      - ./infra/haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    ports:
+      - "9050:9050"   # Birleştirilmiş SOCKS5 Load Balancer Portu
+      - "8404:8404"   # HAProxy İstatistik Ekranı (http://localhost:8404/stats)
+    depends_on:
+      - tor-node-1
+      - tor-node-2
+      - tor-node-3
+    networks:
+      - cti_net
+
+  # ==========================================
+  # MESAJ KUYRUĞU (RABBITMQ + MANAGEMENT UI)
+  # ==========================================
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: cti-rabbitmq
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "5672:5672"
+      - "15672:15672" # RabbitMQ Yönetim Paneli (http://localhost:15672)
+    networks:
+      - cti_net
+
+  # ==========================================
+  # VERİTABANI (POSTGRESQL + JSONB + FTS)
+  # ==========================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: cti-postgres
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_cti_data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - cti_net
+
+  # ==========================================
+  # FAZ 2: GO DAĞITIK VERİ TOPLAYICI (SCRAPER)
+  # ==========================================
+  collector-go:
+    build: ./collector-go
+    container_name: cti-collector-go
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - rabbitmq
+      - postgres
+      - haproxy-tor
+    networks:
+      - cti_net
+
+  # ==========================================
+  # FAZ 3: PYTHON ANALİZ, ENTROPİ & DEDUP MOTORU
+  # ==========================================
+  analyzer-python:
+    build: ./analyzer-python
+    container_name: cti-analyzer-python
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - rabbitmq
+      - postgres
+    networks:
+      - cti_net
+
+  # ==========================================
+  # FAZ 4 & 5: ÖZEL SOC/CTI WEB DASHBOARD & API
+  # ==========================================
+  dashboard-web:
+    build: ./dashboard-web
+    container_name: cti-dashboard-web
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "8000:8000"   # SOC CTI Dashboard (http://localhost:8000)
+    depends_on:
+      - postgres
+      - rabbitmq
+      - haproxy-tor
+    networks:
+      - cti_net
+
+networks:
+  cti_net:
+    driver: bridge
+
+volumes:
+  pg_cti_data:

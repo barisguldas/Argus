@@ -1,0 +1,42 @@
+name: Argus CTI CI Pipeline
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  test-python-analyzer:
+    name: Python CTI Engine Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./analyzer-python
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run Unit Tests
+        run: python -m unittest discover -v
+
+  test-go-collector:
+    name: Go Concurrent Scraper Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./collector-go
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go 1.22
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - name: Download Go Modules & Run Tests
+        run: |
+          go mod tidy
+          go test -v ./...

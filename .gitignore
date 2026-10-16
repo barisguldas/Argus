@@ -1,0 +1,27 @@
+# Ortam değişkenleri ve gizli anahtarlar
+.env
+*.env.local
+
+# Python önbellek ve sanal ortamlar
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.pytest_cache/
+
+# Go derleme çıktıları
+collector-go/cti-collector
+*.exe
+*.out
+
+# Veritabanı ve Docker yerel verileri
+pg_data/
+*.log
+
+# IDE ve İşletim Sistemi dosyaları
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

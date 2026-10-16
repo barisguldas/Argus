@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="tr" class="dark">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ARGUS | Enterprise Cyber Threat Intelligence & Leak Radar</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        soc: {
+                            bg: '#0b0f17',
+                            surface: '#111827',
+                            elevated: '#1a2234',
+                            border: '#1f2937',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #0b0f17; color: #f3f4f6; font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0b0f17; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        .pulse-dot { animation: pulse 2s infinite; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.35; transform: scale(1.15); }
+        }
+        .drawer-backdrop { transition: opacity 0.2s ease-in-out; }
+        .drawer-panel { transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
+    </style>
+</head>
+<body class="h-screen overflow-hidden flex bg-[#0b0f17] text-gray-100 select-none">
+
+    <!-- SOL YAN MENÜ (ENTERPRISE SIDEBAR) -->
+    <aside class="w-64 bg-[#0f1523] border-r border-gray-800/80 flex flex-col justify-between shrink-0">
+        <div>
+            <!-- Logo Alanı -->
+            <div class="h-16 px-5 flex items-center gap-3 border-b border-gray-800/80">
+                <div class="w-9 h-9 rounded-lg bg-cyan-500/15 border border-cyan-500/40 flex items-center justify-center text-cyan-400 font-mono font-bold text-sm shadow-sm tracking-tighter">
+                    AR
+                </div>
+                <div>
+                    <div class="text-sm font-bold tracking-widest text-white leading-tight">ARGUS</div>
+                    <div class="text-[10px] font-mono text-cyan-400 tracking-widest uppercase">Enterprise CTI</div>
+                </div>
+            </div>
+
+            <!-- Navigasyon Sekmeleri -->
+            <div class="p-3 space-y-1">
+                <div data-i18n="nav_sec_ops" class="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-500">Operasyon Merkezi</div>
+
+                <button onclick="switchTab('radar')" id="nav-radar" class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium transition bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                    <span data-i18n="nav_radar">Tehdit Radarı & Akış</span>
+                    <span id="navBadgeLeaks" class="px-1.5 py-0.5 text-[10px] font-mono rounded bg-gray-800 text-gray-300">0</span>
+                </button>
+
+                <button onclick="switchTab('cases')" id="nav-cases" class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium text-gray-400 hover:text-gray-200 hover:bg-gray-800/50 transition border border-transparent">
+                    <span data-i18n="nav_cases">SOC Olay Merkezi</span>
+                    <span id="navBadgeCases" class="px-1.5 py-0.5 text-[10px] font-mono font-bold rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">0</span>
+                </button>
+
+                <div data-i18n="nav_sec_cfg" class="pt-3 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-500">Yapılandırma & Sensörler</div>
+
+                <button onclick="switchTab('targets')" id="nav-targets" class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium text-gray-400 hover:text-gray-200 hover:bg-gray-800/50 transition border border-transparent">
+                    <span data-i18n="nav_targets">Dark Web & Kaynaklar</span>
+                    <span id="navBadgeTargets" class="px-1.5 py-0.5 text-[10px] font-mono rounded bg-gray-800 text-gray-400">0</span>
+                </button>
+
+                <button onclick="switchTab('rules')" id="nav-rules" class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium text-gray-400 hover:text-gray-200 hover:bg-gray-800/50 transition border border-transparent">
+                    <span data-i18n="nav_rules">İzleme Kuralları</span>
+                    <span id="navBadgeRules" class="px-1.5 py-0.5 text-[10px] font-mono rounded bg-gray-800 text-gray-400">0</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Sol Alt: Tor Durum & Hızlı Araçlar -->
+        <div class="p-3.5 border-t border-gray-800/80 space-y-2.5 bg-gray-950/40">
+            <div class="p-3 rounded-lg bg-gray-900/90 border border-gray-800 space-y-2">
+                <div class="flex items-center justify-between">
+                    <span data-i18n="tor_cluster" class="text-[11px] font-semibold text-gray-300">Tor SOCKS5 Kümesi</span>
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 pulse-dot"></span>
+                </div>
+                <div id="torStatusText" class="text-[11px] font-mono text-gray-400 truncate">3x Node (HAProxy :9050)</div>
+                <button onclick="checkTorStatus()" data-i18n="tor_verify_btn" class="w-full py-1.5 rounded text-[11px] font-medium bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 border border-purple-500/30 transition">
+                    Çıkış IP'sini Doğrula
+                </button>
+            </div>
+
+            <a href="/api/export/csv" data-i18n="export_csv_btn" class="w-full py-2 px-3 rounded-lg text-xs font-medium bg-gray-900 hover:bg-gray-800 text-gray-300 border border-gray-800 transition flex items-center justify-center">
+                Tüm Veriyi İndir (CSV)
+            </a>
+        </div>
+    </aside>
+
+    <!-- SAĞ ANA ÇALIŞMA ALANI -->
+    <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+
+        <!-- ÜST BAR (HEADER) -->
+        <header class="h-16 px-6 border-b border-gray-800/80 bg-[#0f1523]/80 backdrop-blur flex items-center justify-between gap-4 shrink-0">
+            <div class="flex items-center gap-3">
+                <h2 id="pageTitle" class="text-base font-bold text-white">Tehdit Radarı & Canlı İstihbarat Akışı</h2>
+                <span class="px-2 py-0.5 text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 pulse-dot"></span>
+                    <span data-i18n="live_stream_badge">CANLI AKTARIM</span>
+                </span>
+            </div>
+
+            <div class="flex items-center gap-2.5">
+                <!-- Dil Seçici (TR / EN Switcher) -->
+                <div class="flex items-center bg-[#0b0f17] border border-gray-800 rounded-lg p-0.5 text-xs font-mono">
+                    <button onclick="setLanguage('tr')" id="langBtnTr" class="px-2.5 py-1 rounded-md font-semibold transition bg-cyan-500 text-gray-950">TR</button>
+                    <button onclick="setLanguage('en')" id="langBtnEn" class="px-2.5 py-1 rounded-md font-semibold transition text-gray-400 hover:text-white">EN</button>
+                </div>
+
+                <button onclick="refreshAll()" data-i18n="refresh_btn" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-800/80 hover:bg-gray-700 text-gray-200 border border-gray-700 transition">
+                    Yenile
+                </button>
+                <button onclick="openInjectModal()" data-i18n="inject_btn" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-cyan-500 hover:bg-cyan-400 text-gray-950 transition shadow-sm">
+                    + Test Sızıntısı Gönder
+                </button>
+            </div>
+        </header>
+
+        <!-- KAYDIRILABİLİR İÇERİK ALANI -->
+        <main class="flex-1 overflow-y-auto p-6 space-y-6 select-text">
+
+            <!-- ========================================================= -->
+            <!-- SEKME 1: TEHDİT RADARI & GENEL BAKIŞ (VARSAYILAN EKRAN)   -->
+            <!-- ========================================================= -->
+            <div id="view-radar" class="space-y-6">
+
+                <!-- 5'li Kompakt KPI Şeridi -->
+                <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
+                    <div class="bg-[#111827] border border-gray-800/90 rounded-xl p-4">
+                        <div data-i18n="kpi_unique_title" class="text-[11px] font-medium text-gray-400">Tekil Sızıntı (Unique)</div>
+                        <div class="mt-1.5 flex items-baseline justify-between">
+                            <span id="statTotalLeaks" class="text-2xl font-bold text-white font-mono">0</span>
+                            <span class="text-[10px] text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded font-mono">SHA-256</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-[#111827] border border-red-900/40 rounded-xl p-4">
+                        <div data-i18n="kpi_crit_title" class="text-[11px] font-medium text-red-400">Kritik Seviye Sızıntı</div>
+                        <div class="mt-1.5 flex items-baseline justify-between">
+                            <span id="statCriticalLeaks" class="text-2xl font-bold text-red-400 font-mono">0</span>
+                            <span data-i18n="kpi_crit_sub" class="text-[10px] text-red-300 bg-red-500/10 px-2 py-0.5 rounded">Skor 80+</span>
+                        </div>
+                    </div>
+
+                    <div onclick="switchTab('cases')" class="bg-[#111827] border border-amber-900/40 hover:border-amber-500/50 rounded-xl p-4 cursor-pointer transition">
+                        <div data-i18n="kpi_cases_title" class="text-[11px] font-medium text-amber-400">Açık SOC Olayları</div>
+                        <div class="mt-1.5 flex items-baseline justify-between">
+                            <span id="statUnackAlerts" class="text-2xl font-bold text-amber-400 font-mono">0</span>
+                            <span data-i18n="kpi_cases_sub" class="text-[10px] text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded">Müdahale Bekleyen</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-[#111827] border border-gray-800/90 rounded-xl p-4">
+                        <div data-i18n="kpi_dedup_title" class="text-[11px] font-medium text-gray-400">Birleştirilen Tekrar (Dedup)</div>
+                        <div class="mt-1.5 flex items-baseline justify-between">
+                            <span id="statDedupHits" class="text-2xl font-bold text-purple-400 font-mono">0</span>
+                            <span data-i18n="kpi_dedup_sub" class="text-[10px] text-purple-300 bg-purple-500/10 px-2 py-0.5 rounded">Önlenen Gürültü</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-[#111827] border border-gray-800/90 rounded-xl p-4">
+                        <div data-i18n="kpi_avg_title" class="text-[11px] font-medium text-gray-400">Ortalama Risk Skoru</div>
+                        <div class="mt-1.5 flex items-baseline justify-between">
+                            <span id="statAvgRisk" class="text-2xl font-bold text-emerald-400 font-mono">0</span>
+                            <span id="statActiveRules" class="text-[10px] text-gray-400 bg-gray-800 px-2 py-0.5 rounded">0 Kural</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3'lü Analitik Grafik Şeridi -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <div class="bg-[#111827] border border-gray-800/90 rounded-xl p-4">
+                        <div data-i18n="chart_sev_title" class="text-xs font-semibold text-gray-300 mb-3">Tehdit Seviyesi Dağılımı</div>
+                        <div class="h-40 flex items-center justify-center">
+                            <canvas id="severityChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-[#111827] border border-gray-800/90 rounded-xl p-4">
+                        <div data-i18n="chart_act_title" class="text-xs font-semibold text-gray-300 mb-3">En Aktif Tehdit Aktörleri / Gruplar</div>
+                        <div class="h-40">
+                            <canvas id="actorsChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-[#111827] border border-gray-800/90 rounded-xl p-4">
+                        <div data-i18n="chart_cnt_title" class="text-xs font-semibold text-gray-300 mb-3">Hedef Alınan Ülkeler (GeoIP & Kurbanlar)</div>
+                        <div class="h-40">
+                            <canvas id="countriesChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Kurumsal Sızıntı Tablosu (Data Grid) -->
+                <div class="bg-[#111827] border border-gray-800/90 rounded-xl overflow-hidden shadow-lg">
+                    <!-- Arama & Filtre Barı -->
+                    <div class="p-4 border-b border-gray-800 flex flex-wrap items-center justify-between gap-3 bg-gray-900/40">
+                        <div class="relative flex-1 min-w-[260px]">
+                            <input
+                                type="text"
+                                id="searchInput"
+                                oninput="debounceFetchLeaks()"
+                                placeholder="Tabloda filtrele: Domain, IP, CVE, tehdit grubu (QILIN, INCRANSOM) veya ülke (US, DE, TR)..."
+                                class="w-full bg-[#0b0f17] border border-gray-800 focus:border-cyan-500 rounded-lg px-3.5 py-2 text-xs text-white placeholder-gray-500 focus:outline-none"
+                            />
+                        </div>
+
+                        <div class="flex items-center gap-2.5">
+                            <select id="severityFilter" onchange="fetchLeaks()" class="bg-[#0b0f17] border border-gray-800 rounded-lg px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-cyan-500">
+                                <option value="ALL" data-i18n="flt_all_sev">Tüm Seviyeler</option>
+                                <option value="CRITICAL">CRITICAL (80+)</option>
+                                <option value="HIGH">HIGH (60-79)</option>
+                                <option value="MEDIUM">MEDIUM (35-59)</option>
+                                <option value="LOW">LOW (0-34)</option>
+                            </select>
+
+                            <select id="sourceFilter" onchange="fetchLeaks()" class="bg-[#0b0f17] border border-gray-800 rounded-lg px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-cyan-500">
+                                <option value="ALL" data-i18n="flt_all_src">Tüm Kaynaklar</option>
+                                <option value="darkweb_forum">Dark Web (.onion)</option>
+                                <option value="threat_feed">Threat Feeds (CISA)</option>
+                                <option value="paste_site">Paste & URLhaus</option>
+                                <option value="telegram">Telegram</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Tablo Başlığı ve Satırlar -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-gray-800 text-[11px] font-semibold uppercase tracking-wider text-gray-400 bg-gray-950/60">
+                                    <th data-i18n="th_sev" class="py-3 px-4 w-32">Seviye / Skor</th>
+                                    <th data-i18n="th_title" class="py-3 px-4">Sızıntı Başlığı & Kaynak</th>
+                                    <th data-i18n="th_actor" class="py-3 px-4 w-48">Tehdit Aktörü</th>
+                                    <th data-i18n="th_country" class="py-3 px-4 w-24">Ülke</th>
+                                    <th data-i18n="th_iocs" class="py-3 px-4 w-56">Çıkarılan Bulgular (IOC)</th>
+                                    <th data-i18n="th_time" class="py-3 px-4 w-28 text-right">Son Görülme</th>
+                                    <th data-i18n="th_action" class="py-3 px-4 w-28 text-right">Aksiyon</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leaksTableBody" class="divide-y divide-gray-800/70 text-xs">
+                                <tr>
+                                    <td colspan="7" class="py-12 text-center text-gray-500">...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================================= -->
+            <!-- SEKME 2: SOC OLAY MERKEZİ (CASE MANAGEMENT)               -->
+            <!-- ========================================================= -->
+            <div id="view-cases" class="hidden space-y-4">
+                <div class="bg-[#111827] border border-gray-800 rounded-xl p-4 flex items-center justify-between">
+                    <div>
+                        <h3 data-i18n="cases_header" class="text-sm font-bold text-white">SOC Olay Müdahale ve Vaka Yönetimi (Case Management)</h3>
+                        <p data-i18n="cases_sub" class="text-xs text-gray-400 mt-0.5">Kurumsal izleme kurallarıyla eşleşen alarmların durumunu güncelleyin ve analist inceleme notu ekleyin.</p>
+                    </div>
+                </div>
+
+                <div id="alertsContainer" class="grid grid-cols-1 lg:grid-cols-2 gap-4"></div>
+            </div>
+
+            <!-- ========================================================= -->
+            <!-- SEKME 3: DARK WEB (.ONION) & CTI KAYNAKLARI               -->
+            <!-- ========================================================= -->
+            <div id="view-targets" class="hidden space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Sol: Yeni Kaynak Ekleme Kartı -->
+                    <div class="bg-[#111827] border border-gray-800 rounded-xl p-5 h-fit space-y-4">
+                        <div>
+                            <h3 data-i18n="targets_add_title" class="text-sm font-bold text-white">+ Yeni Dark Web (.onion) / CTI Kaynağı Ekle</h3>
+                            <p data-i18n="targets_add_sub" class="text-xs text-gray-400 mt-1">Go Concurrent Scraper eklediğiniz adresi periyodik olarak tarar ve bulguları RabbitMQ kuyruğuna aktarır.</p>
+                        </div>
+                        <form onsubmit="addScraperTarget(event)" class="space-y-3">
+                            <div>
+                                <label data-i18n="targets_lbl_name" class="block text-xs text-gray-400 mb-1">Kaynak / Forum Adı</label>
+                                <input type="text" id="targetName" required placeholder="Ahmia .onion SQL Dump Search" class="w-full bg-[#0b0f17] border border-gray-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500" />
+                            </div>
+                            <div>
+                                <label data-i18n="targets_lbl_url" class="block text-xs text-gray-400 mb-1">Hedef URL (.onion veya https://)</label>
+                                <input type="url" id="targetUrl" required placeholder="http://...onion/ or https://..." class="w-full bg-[#0b0f17] border border-gray-800 rounded-lg px-3 py-2 text-xs font-mono text-cyan-300 focus:outline-none focus:border-cyan-500" />
+                            </div>
+                            <div class="pt-1 flex items-center justify-between">
+                                <label class="flex items-center gap-2 text-xs text-purple-300 cursor-pointer">
+                                    <input type="checkbox" id="targetUseTor" checked class="rounded bg-gray-900 border-gray-700 text-purple-500" />
+                                    <span data-i18n="targets_use_tor">Tor SOCKS5 Proxy Üzerinden Git</span>
+                                </label>
+                            </div>
+                            <button type="submit" data-i18n="targets_submit_btn" class="w-full py-2 bg-cyan-500 hover:bg-cyan-400 text-gray-950 font-semibold text-xs rounded-lg transition">
+                                Kaynağı Kaydet ve Taramayı Başlat
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Sağ: Mevcut Kaynaklar Listesi -->
+                    <div class="lg:col-span-2 bg-[#111827] border border-gray-800 rounded-xl overflow-hidden">
+                        <div class="px-5 py-3.5 border-b border-gray-800 flex items-center justify-between">
+                            <h3 data-i18n="targets_list_title" class="text-sm font-bold text-white">Aktif Tarama Hedefleri (Go Worker Pool)</h3>
+                            <span data-i18n="targets_list_sub" class="text-xs text-gray-400">Otomatik Zamanlayıcı Aktif</span>
+                        </div>
+                        <div id="targetsContainer" class="divide-y divide-gray-800/70"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================================= -->
+            <!-- SEKME 4: KURUMSAL İZLEME KURALLARI (WATCH RULES)          -->
+            <!-- ========================================================= -->
+            <div id="view-rules" class="hidden space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="bg-[#111827] border border-gray-800 rounded-xl p-5 h-fit space-y-4">
+                        <div>
+                            <h3 data-i18n="rules_add_title" class="text-sm font-bold text-white">Yeni Kurumsal İzleme Kuralı</h3>
+                            <p data-i18n="rules_add_sub" class="text-xs text-gray-400 mt-1">Sızıntı içinde bu anahtar kelime veya domain geçtiğinde risk skoru artırılır ve otomatik SOC alarmı üretilir.</p>
+                        </div>
+                        <form onsubmit="addWatchRule(event)" class="space-y-3">
+                            <div>
+                                <label data-i18n="rules_lbl_name" class="block text-xs text-gray-400 mb-1">Kural Başlığı</label>
+                                <input type="text" id="ruleName" required placeholder="Corporate Domain Rule" class="w-full bg-[#0b0f17] border border-gray-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500" />
+                            </div>
+                            <div>
+                                <label data-i18n="rules_lbl_kw" class="block text-xs text-gray-400 mb-1">Aranacak Kelime / Domain / E-posta</label>
+                                <input type="text" id="ruleKeyword" required placeholder="company.com or lockbit" class="w-full bg-[#0b0f17] border border-gray-800 rounded-lg px-3 py-2 text-xs font-mono text-amber-300 focus:outline-none focus:border-cyan-500" />
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label data-i18n="rules_lbl_cat" class="block text-xs text-gray-400 mb-1">Kategori</label>
+                                    <select id="ruleCategory" class="w-full bg-[#0b0f17] border border-gray-800 rounded-lg px-3 py-2 text-xs text-gray-200">
+                                        <option value="DOMAIN">DOMAIN</option>
+                                        <option value="VIP_EMAIL">VIP_EMAIL</option>
+                                        <option value="KEYWORD">KEYWORD</option>
+                                        <option value="BRAND">BRAND</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label data-i18n="rules_lbl_boost" class="block text-xs text-gray-400 mb-1">Risk Puanı Artışı</label>
+                                    <input type="number" id="ruleBoost" value="40" min="5" max="90" class="w-full bg-[#0b0f17] border border-gray-800 rounded-lg px-3 py-2 text-xs text-white font-mono" />
+                                </div>
+                            </div>
+                            <button type="submit" data-i18n="rules_submit_btn" class="w-full py-2 bg-cyan-500 hover:bg-cyan-400 text-gray-950 font-semibold text-xs rounded-lg transition">
+                                + İzleme Kuralını Ekle
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="lg:col-span-2 bg-[#111827] border border-gray-800 rounded-xl overflow-hidden">
+                        <div class="px-5 py-3.5 border-b border-gray-800">
+                            <h3 data-i18n="rules_list_title" class="text-sm font-bold text-white">Tanımlı SOC İzleme Kuralları</h3>
+                        </div>
+                        <div id="rulesContainer" class="divide-y divide-gray-800/70"></div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- SAĞDAN KAYARAK AÇILAN İSTİHBARAT İNCELEME ÇEKMECESİ (THREAT INSPECTOR)    -->
+    <!-- ========================================================================= -->
+    <div id="inspectorBackdrop" onclick="closeInspector()" class="fixed inset-0 bg-black/60 backdrop-blur-xs hidden z-40 drawer-backdrop"></div>
+    <aside id="inspectorDrawer" class="fixed top-0 right-0 bottom-0 w-full max-w-2xl bg-[#0f1523] border-l border-gray-800 z-50 transform translate-x-full drawer-panel flex flex-col shadow-2xl select-text">
+        <!-- Çekmece Üst Bar -->
+        <div class="px-6 py-4 border-b border-gray-800 flex items-center justify-between bg-[#111827]">
+            <div class="flex items-center gap-2.5">
+                <span class="text-xs font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30" id="inspIdBadge">LEAK #0</span>
+                <span id="inspSeverityBadge"></span>
+            </div>
+            <div class="flex items-center gap-2">
+                <a id="inspStixBtn" href="#" data-i18n="insp_stix_btn" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 transition">
+                    STIX 2.1 İndir
+                </a>
+                <a id="inspReportBtn" href="#" target="_blank" data-i18n="insp_report_btn" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 transition">
+                    Olay Raporu (PDF)
+                </a>
+                <button onclick="closeInspector()" class="ml-2 w-8 h-8 rounded-lg bg-gray-800/80 hover:bg-gray-700 text-gray-300 flex items-center justify-center text-lg">&times;</button>
+            </div>
+        </div>
+
+        <!-- Çekmece İçeriği -->
+        <div id="inspectorBody" class="flex-1 overflow-y-auto p-6 space-y-6"></div>
+    </aside>
+
+    <!-- MANUEL SIZINTI ENJEKSİYON MODALI -->
+    <div id="injectModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden items-center justify-center z-50 p-4 select-text">
+        <div class="bg-[#111827] border border-gray-700 rounded-xl max-w-lg w-full p-5 space-y-4 shadow-2xl">
+            <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+                <h3 data-i18n="modal_inj_title" class="text-sm font-bold text-white">RabbitMQ Kuyruğuna Özel Sızıntı Gönder</h3>
+                <button onclick="closeInjectModal()" class="text-gray-400 hover:text-white text-lg">&times;</button>
+            </div>
+            <form onsubmit="submitManualInject(event)" class="space-y-3">
+                <div>
+                    <label data-i18n="modal_lbl_title" class="block text-xs text-gray-400 mb-1">Sızıntı Başlığı</label>
+                    <input type="text" id="injTitle" required value="[RANSOMWARE: LOCKBIT] Corporate Credentials & Keys Leaked (TR)" class="w-full bg-[#0b0f17] border border-gray-800 rounded-lg px-3 py-2 text-xs text-white" />
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label data-i18n="modal_lbl_stype" class="block text-xs text-gray-400 mb-1">Kaynak Tipi</label>
+                        <select id="injSourceType" class="w-full bg-[#0b0f17] border border-gray-800 rounded-lg px-3 py-2 text-xs text-white">
+                            <option value="darkweb_forum">darkweb_forum (.onion)</option>
+                            <option value="telegram">telegram</option>
+                            <option value="paste_site">paste_site</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label data-i18n="modal_lbl_sname" class="block text-xs text-gray-400 mb-1">Kaynak Adı</label>
+                        <input type="text" id="injSourceName" required value="LockBit Onion Mirror" class="w-full bg-[#0b0f17] border border-gray-800 rounded-lg px-3 py-2 text-xs text-white" />
+                    </div>
+                </div>
+                <div>
+                    <label data-i18n="modal_lbl_content" class="block text-xs text-gray-400 mb-1">Ham Sızıntı İçeriği</label>
+                    <textarea id="injContent" rows="6" required class="w-full bg-[#0b0f17] border border-gray-800 rounded-lg p-3 text-xs font-mono text-emerald-300">Group: LOCKBIT
+Country: TR
+Target Domain: ornek-holding.com.tr
+Admin Credentials:
+admin@ornek-holding.com.tr:ProdAdmin_2026!
+AWS Key: AKIAIOSFODNN7EXAMPLE
+GitHub Token: ghp_a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8
+Exploited Vulnerability: CVE-2024-3400
+Attacker C2 IP: 185.220.101.146</textarea>
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeInjectModal()" data-i18n="modal_cancel" class="px-4 py-2 rounded-lg text-xs bg-gray-800 text-gray-300">İptal</button>
+                    <button type="submit" data-i18n="modal_submit" class="px-4 py-2 rounded-lg text-xs font-semibold bg-cyan-500 hover:bg-cyan-400 text-gray-950">Kuyruğa Gönder</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let currentLang = localStorage.getItem('argus_lang') || 'tr';
+        let currentTab = 'radar';
+        let currentInspectedIdx = null;
+        let searchTimer = null;
+        let cachedLeaks = [];
+        let severityChartInst = null;
+        let actorsChartInst = null;
+        let countriesChartInst = null;
+
+        const I18N = {
+            tr: {
+                nav_sec_ops: 'Operasyon Merkezi',
+                nav_radar: 'Tehdit Radarı & Akış',
+                nav_cases: 'SOC Olay Merkezi',
+                nav_sec_cfg: 'Yapılandırma & Sensörler',
+                nav_targets: 'Dark Web & Kaynaklar',
+                nav_rules: 'İzleme Kuralları',
+                tor_cluster: 'Tor SOCKS5 Kümesi',
+                tor_verify_btn: 'Çıkış IP\'sini Doğrula',
+                export_csv_btn: 'Tüm Veriyi İndir (CSV)',
+                live_stream_badge: 'CANLI AKTARIM',
+                refresh_btn: 'Yenile',
+                inject_btn: '+ Test Sızıntısı Gönder',
+                kpi_unique_title: 'Tekil Sızıntı (Unique)',
+                kpi_crit_title: 'Kritik Seviye Sızıntı',
+                kpi_crit_sub: 'Skor 80+',
+                kpi_cases_title: 'Açık SOC Olayları',
+                kpi_cases_sub: 'Müdahale Bekleyen',
+                kpi_dedup_title: 'Birleştirilen Tekrar (Dedup)',
+                kpi_dedup_sub: 'Önlenen Gürültü',
+                kpi_avg_title: 'Ortalama Risk Skoru',
+                chart_sev_title: 'Tehdit Seviyesi Dağılımı',
+                chart_act_title: 'En Aktif Tehdit Aktörleri / Gruplar',
+                chart_cnt_title: 'Hedef Alınan Ülkeler (GeoIP & Kurbanlar)',
+                search_placeholder: 'Tabloda filtrele: Domain, IP, CVE, tehdit grubu (QILIN, INCRANSOM) veya ülke (US, DE, TR)...',
+                flt_all_sev: 'Tüm Seviyeler',
+                flt_all_src: 'Tüm Kaynaklar',
+                th_sev: 'Seviye / Skor',
+                th_title: 'Sızıntı Başlığı & Kaynak',
+                th_actor: 'Tehdit Aktörü',
+                th_country: 'Ülke',
+                th_iocs: 'Çıkarılan Bulgular (IOC)',
+                th_time: 'Son Görülme',
+                th_action: 'Aksiyon',
+                cases_header: 'SOC Olay Müdahale ve Vaka Yönetimi (Case Management)',
+                cases_sub: 'Kurumsal izleme kurallarıyla eşleşen alarmların durumunu güncelleyin ve analist inceleme notu ekleyin.',
+                targets_add_title: '+ Yeni Dark Web (.onion) / CTI Kaynağı Ekle',
+                targets_add_sub: 'Go Concurrent Scraper eklediğiniz adresi periyodik olarak tarar ve bulguları RabbitMQ kuyruğuna aktarır.',
+                targets_lbl_name: 'Kaynak / Forum Adı',
+                targets_lbl_url: 'Hedef URL (.onion veya https://)',
+                targets_use_tor: 'Tor SOCKS5 Proxy Üzerinden Git',
+                targets_submit_btn: 'Kaynağı Kaydet ve Taramayı Başlat',
+                targets_list_title: 'Aktif Tarama Hedefleri (Go Worker Pool)',
+                targets_list_sub: 'Otomatik Zamanlayıcı Aktif',
+                rules_add_title: 'Yeni Kurumsal İzleme Kuralı',
+                rules_add_sub: 'Sızıntı içinde bu anahtar kelime veya domain geçtiğinde risk skoru artırılır ve otomatik SOC alarmı üretilir.',
+                rules_lbl_name: 'Kural Başlığı',
+                rules_lbl_kw: 'Aranacak Kelime / Domain / E-posta',
+                rules_lbl_cat: 'Kategori',
+                rules_lbl_boost: 'Risk Puanı Artışı',
+                rules_submit_btn: '+ İzleme Kuralını Ekle',
+                rules_list_title: 'Tanımlı SOC İzleme Kuralları',
+                insp_stix_btn: 'STIX 2.1 İndir',
+                insp_report_btn: 'Olay Raporu (PDF)',
+                modal_inj_title: 'RabbitMQ Kuyruğuna Özel Sızıntı Gönder',
+                modal_lbl_title: 'Sızıntı Başlığı',
+                modal_lbl_stype: 'Kaynak Tipi',
+                modal_lbl_sname: 'Kaynak Adı',
+                modal_lbl_content: 'Ham Sızıntı İçeriği',
+                modal_cancel: 'İptal',
+                modal_submit: 'Kuyruğa Gönder',
+                tab_titles: {
+                    radar: 'Tehdit Radarı & Canlı İstihbarat Akışı',
+                    cases: 'SOC Olay Merkezi (Case Management)',
+                    targets: 'Dark Web (.onion) & CTI Veri Kaynakları',
+                    rules: 'Kurumsal İzleme Kuralları (Watch Rules)'
+                },
+                rules_word: 'Kural',
+                inspect_btn: 'İncele',
+                cred_key_word: 'Kimlik/Key',
+                text_evidence: 'Metin Kanıtı',
+                no_leaks: 'Arama kriterlerine uygun sızıntı kaydı bulunamadı.',
+                no_cases: 'Henüz tetiklenen SOC olayı yok.',
+                case_word: 'Vaka',
+                note_placeholder: 'SOC Analist inceleme notu...',
+                save_note_btn: 'Notu Kaydet',
+                matched_word: 'Aranan',
+                risk_pts_word: 'Risk Puanı',
+                remove_btn: 'Kaldır',
+                scan_now_btn: 'Şimdi Tara',
+                delete_btn: 'Sil',
+                insp_actor: 'Tehdit Aktörü',
+                insp_country: 'Hedef Ülke',
+                insp_dedup: 'Tekilleştirme (Dedup)',
+                insp_seen_times: 'Kez Görüldü',
+                insp_rules_hdr: 'Tetiklenen SOC İzleme Kuralları',
+                insp_creds_hdr: 'İfşa Olan Kimlik Bilgileri & Anahtarlar',
+                insp_cves_hdr: 'İlişkili Zafiyetler (CVE)',
+                insp_ips_hdr: 'Zenginleştirilmiş IP Adresleri (GeoIP & ASN)',
+                insp_doms_hdr: 'Tespit Edilen Alan Adları (.onion & Clearnet)',
+                insp_raw_hdr: 'Ham Sızıntı Kanıt Metni (Raw Content)',
+                insp_src_url: 'Kaynak URL:',
+                insp_seen_srcs: 'Görüldüğü Kaynaklar:'
+            },
+            en: {
+                nav_sec_ops: 'Operations Center',
+                nav_radar: 'Threat Radar & Feed',
+                nav_cases: 'SOC Incident Center',
+                nav_sec_cfg: 'Configuration & Sensors',
+                nav_targets: 'Dark Web & Sources',
+                nav_rules: 'Watch Rules',
+                tor_cluster: 'Tor SOCKS5 Cluster',
+                tor_verify_btn: 'Verify Exit IP',
+                export_csv_btn: 'Export All Data (CSV)',
+                live_stream_badge: 'LIVE STREAM',
+                refresh_btn: 'Refresh',
+                inject_btn: '+ Inject Test Leak',
+                kpi_unique_title: 'Unique Leaks Indexed',
+                kpi_crit_title: 'Critical Severity Leaks',
+                kpi_crit_sub: 'Score 80+',
+                kpi_cases_title: 'Open SOC Incidents',
+                kpi_cases_sub: 'Action Required',
+                kpi_dedup_title: 'Deduplicated Hits',
+                kpi_dedup_sub: 'Noise Suppressed',
+                kpi_avg_title: 'Average Risk Score',
+                chart_sev_title: 'Threat Severity Breakdown',
+                chart_act_title: 'Top Active Threat Actors / Groups',
+                chart_cnt_title: 'Targeted Countries (GeoIP & Victims)',
+                search_placeholder: 'Filter grid: Domain, IP, CVE, threat group (QILIN, INCRANSOM) or country (US, DE, TR)...',
+                flt_all_sev: 'All Severities',
+                flt_all_src: 'All Sources',
+                th_sev: 'Severity / Score',
+                th_title: 'Leak Title & Source',
+                th_actor: 'Threat Actor',
+                th_country: 'Country',
+                th_iocs: 'Extracted IOCs',
+                th_time: 'Last Seen',
+                th_action: 'Action',
+                cases_header: 'SOC Incident Response & Case Management',
+                cases_sub: 'Update investigation status and attach analyst notes for triggered watch rule alerts.',
+                targets_add_title: '+ Add Dark Web (.onion) / CTI Source',
+                targets_add_sub: 'Go Concurrent Scraper periodically crawls the target URL and publishes findings to RabbitMQ.',
+                targets_lbl_name: 'Source / Forum Name',
+                targets_lbl_url: 'Target URL (.onion or https://)',
+                targets_use_tor: 'Route via Tor SOCKS5 Proxy',
+                targets_submit_btn: 'Save Source & Start Scraping',
+                targets_list_title: 'Active Scraper Targets (Go Worker Pool)',
+                targets_list_sub: 'Automated Scheduler Active',
+                rules_add_title: 'New Enterprise Watch Rule',
+                rules_add_sub: 'Automatically boosts risk score and triggers a SOC case when keyword or domain is matched.',
+                rules_lbl_name: 'Rule Name',
+                rules_lbl_kw: 'Keyword / Domain / Email to Match',
+                rules_lbl_cat: 'Category',
+                rules_lbl_boost: 'Risk Score Boost',
+                rules_submit_btn: '+ Add Watch Rule',
+                rules_list_title: 'Configured SOC Watch Rules',
+                insp_stix_btn: 'Export STIX 2.1',
+                insp_report_btn: 'Incident Report (PDF)',
+                modal_inj_title: 'Inject Custom Leak into RabbitMQ Queue',
+                modal_lbl_title: 'Leak Title',
+                modal_lbl_stype: 'Source Type',
+                modal_lbl_sname: 'Source Name',
+                modal_lbl_content: 'Raw Leak Payload',
+                modal_cancel: 'Cancel',
+                modal_submit: 'Publish to Queue',
+                tab_titles: {
+                    radar: 'Threat Radar & Live Intelligence Stream',
+                    cases: 'SOC Incident Center (Case Management)',
+                    targets: 'Dark Web (.onion) & CTI Data Sources',
+                    rules: 'Enterprise Watch Rules'
+                },
+                rules_word: 'Rules',
+                inspect_btn: 'Inspect',
+                cred_key_word: 'Cred/Key',
+                text_evidence: 'Text Evidence',
+                no_leaks: 'No leak records matched your filter criteria.',
+                no_cases: 'No triggered SOC incidents yet.',
+                case_word: 'Case',
+                note_placeholder: 'Add SOC analyst investigation note...',
+                save_note_btn: 'Save Note',
+                matched_word: 'Keyword',
+                risk_pts_word: 'Risk Boost',
+                remove_btn: 'Remove',
+                scan_now_btn: 'Scan Now',
+                delete_btn: 'Delete',
+                insp_actor: 'Threat Actor',
+                insp_country: 'Target Country',
+                insp_dedup: 'Deduplication',
+                insp_seen_times: 'Times Seen',
+                insp_rules_hdr: 'Triggered SOC Watch Rules',
+                insp_creds_hdr: 'Exposed Credentials & API Keys',
+                insp_cves_hdr: 'Associated Vulnerabilities (CVEs)',
+                insp_ips_hdr: 'Enriched IPv4 Addresses (GeoIP & ASN)',
+                insp_doms_hdr: 'Detected Domains (.onion & Clearnet)',
+                insp_raw_hdr: 'Raw Leak Evidence',
+                insp_src_url: 'Source URL:',
+                insp_seen_srcs: 'Seen Sources:'
+            }
+        };
+
+        function t(key) {
+            return (I18N[currentLang] && I18N[currentLang][key]) || I18N.tr[key] || key;
+        }
+
+        function setLanguage(lang) {
+            currentLang = lang === 'en' ? 'en' : 'tr';
+            localStorage.setItem('argus_lang', currentLang);
+            document.documentElement.lang = currentLang;
+
+            const btnTr = document.getElementById('langBtnTr');
+            const btnEn = document.getElementById('langBtnEn');
+            if (currentLang === 'en') {
+                btnEn.className = 'px-2.5 py-1 rounded-md font-semibold transition bg-cyan-500 text-gray-950';
+                btnTr.className = 'px-2.5 py-1 rounded-md font-semibold transition text-gray-400 hover:text-white';
+            } else {
+                btnTr.className = 'px-2.5 py-1 rounded-md font-semibold transition bg-cyan-500 text-gray-950';
+                btnEn.className = 'px-2.5 py-1 rounded-md font-semibold transition text-gray-400 hover:text-white';
+            }
+
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const k = el.getAttribute('data-i18n');
+                el.textContent = t(k);
+            });
+
+            document.getElementById('searchInput').placeholder = t('search_placeholder');
+            document.getElementById('pageTitle').textContent = I18N[currentLang].tab_titles[currentTab] || '';
+
+            refreshAll();
+            if (currentInspectedIdx !== null && !document.getElementById('inspectorDrawer').classList.contains('translate-x-full')) {
+                openInspector(currentInspectedIdx);
+            }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function switchTab(tabName) {
+            currentTab = tabName;
+            const views = ['radar', 'cases', 'targets', 'rules'];
+            views.forEach(v => {
+                const viewEl = document.getElementById('view-' + v);
+                const navEl = document.getElementById('nav-' + v);
+                if (v === tabName) {
+                    viewEl.classList.remove('hidden');
+                    navEl.className = 'w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium transition bg-cyan-500/10 text-cyan-400 border border-cyan-500/20';
+                } else {
+                    viewEl.classList.add('hidden');
+                    navEl.className = 'w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium text-gray-400 hover:text-gray-200 hover:bg-gray-800/50 transition border border-transparent';
+                }
+            });
+            document.getElementById('pageTitle').textContent = I18N[currentLang].tab_titles[tabName] || '';
+        }
+
+        function severityBadge(severity, score) {
+            const styles = {
+                CRITICAL: 'bg-red-500/15 text-red-400 border-red-500/30',
+                HIGH: 'bg-orange-500/15 text-orange-400 border-orange-500/30',
+                MEDIUM: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+                LOW: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+            };
+            const cls = styles[severity] || styles.LOW;
+            return `<span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-semibold border ${cls}">${severity} (${score})</span>`;
+        }
+
+        function sourceLabel(sourceType) {
+            const labels = { darkweb_forum: '[ONION]', telegram: '[TG]', paste_site: '[PASTE]', threat_feed: '[FEED]' };
+            return labels[sourceType] || '[WEB]';
+        }
+
+        function updateCharts(data) {
+            const s = data.summary || {};
+            const sevCounts = [s.critical_count || 0, s.high_count || 0, s.medium_count || 0, s.low_count || 0];
+
+            const ctxSev = document.getElementById('severityChart').getContext('2d');
+            if (!severityChartInst) {
+                severityChartInst = new Chart(ctxSev, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'],
+                        datasets: [{
+                            data: sevCounts,
+                            backgroundColor: ['#ef4444', '#f97316', '#f59e0b', '#10b981'],
+                            borderColor: '#111827',
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '68%',
+                        plugins: {
+                            legend: { position: 'right', labels: { color: '#9ca3af', font: { size: 11 }, boxWidth: 12 } }
+                        }
+                    }
+                });
+            } else {
+                severityChartInst.data.datasets[0].data = sevCounts;
+                severityChartInst.update();
+            }
+
+            const actors = (data.top_actors || []).map(x => x.actor);
+            const actorVals = (data.top_actors || []).map(x => x.count);
+            const ctxAct = document.getElementById('actorsChart').getContext('2d');
+            if (!actorsChartInst) {
+                actorsChartInst = new Chart(ctxAct, {
+                    type: 'bar',
+                    data: {
+                        labels: actors,
+                        datasets: [{ data: actorVals, backgroundColor: '#06b6d4', borderRadius: 4, barThickness: 14 }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { ticks: { color: '#6b7280', font: { size: 10 }, stepSize: 1 }, grid: { color: '#1f2937' } },
+                            y: { ticks: { color: '#d1d5db', font: { size: 10 } }, grid: { display: false } }
+                        }
+                    }
+                });
+            } else {
+                actorsChartInst.data.labels = actors;
+                actorsChartInst.data.datasets[0].data = actorVals;
+                actorsChartInst.update();
+            }
+
+            const countries = (data.top_countries || []).map(x => x.country);
+            const countryVals = (data.top_countries || []).map(x => x.count);
+            const ctxCnt = document.getElementById('countriesChart').getContext('2d');
+            if (!countriesChartInst) {
+                countriesChartInst = new Chart(ctxCnt, {
+                    type: 'bar',
+                    data: {
+                        labels: countries,
+                        datasets: [{ data: countryVals, backgroundColor: '#8b5cf6', borderRadius: 4, barThickness: 22 }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { ticks: { color: '#d1d5db', font: { size: 11 } }, grid: { display: false } },
+                            y: { ticks: { color: '#6b7280', font: { size: 10 }, stepSize: 1 }, grid: { color: '#1f2937' } }
+                        }
+                    }
+                });
+            } else {
+                countriesChartInst.data.labels = countries;
+                countriesChartInst.data.datasets[0].data = countryVals;
+                countriesChartInst.update();
+            }
+        }
+
+        async function fetchStats() {
+            try {
+                const res = await fetch('/api/stats');
+                const data = await res.json();
+                const s = data.summary || {};
+                document.getElementById('statTotalLeaks').textContent = s.total_unique_leaks ?? 0;
+                document.getElementById('statCriticalLeaks').textContent = s.critical_count ?? 0;
+                document.getElementById('statUnackAlerts').textContent = data.unacknowledged_alerts ?? 0;
+                document.getElementById('statDedupHits').textContent = s.deduplicated_hits ?? 0;
+                document.getElementById('statAvgRisk').textContent = (s.avg_risk_score ?? 0) + 'p';
+                document.getElementById('statActiveRules').textContent = (data.active_rules ?? 0) + ' ' + t('rules_word');
+
+                document.getElementById('navBadgeLeaks').textContent = s.total_unique_leaks ?? 0;
+                document.getElementById('navBadgeCases').textContent = data.unacknowledged_alerts ?? 0;
+                document.getElementById('navBadgeRules').textContent = data.active_rules ?? 0;
+                updateCharts(data);
+            } catch (e) {
+                console.error('Stats error:', e);
+            }
+        }
+
+        async function fetchLeaks() {
+            const q = document.getElementById('searchInput').value;
+            const severity = document.getElementById('severityFilter').value;
+            const source_type = document.getElementById('sourceFilter').value;
+
+            const params = new URLSearchParams();
+            if (q) params.set('q', q);
+            if (severity && severity !== 'ALL') params.set('severity', severity);
+            if (source_type && source_type !== 'ALL') params.set('source_type', source_type);
+
+            try {
+                const res = await fetch('/api/leaks?' + params.toString());
+                cachedLeaks = await res.json();
+                const tbody = document.getElementById('leaksTableBody');
+
+                if (!cachedLeaks.length) {
+                    tbody.innerHTML = `<tr><td colspan="7" class="py-12 text-center text-gray-500">${t('no_leaks')}</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = cachedLeaks.map((leak, idx) => {
+                    const ent = leak.extracted_entities || {};
+                    const rules = leak.matched_rules || [];
+                    const actor = ent.threat_actor && ent.threat_actor !== 'Unknown' ? ent.threat_actor : '-';
+                    const country = ent.victim_country || 'GLOBAL';
+
+                    const summaryParts = [];
+                    const credCount = (ent.credentials || []).length + (ent.api_keys || []).length;
+                    const ipCount = (ent.ips || []).length;
+                    const domCount = (ent.domains || []).length;
+                    const cveCount = (ent.cves || []).length;
+
+                    if (credCount > 0) summaryParts.push(`<span class="text-red-400 font-medium">${credCount} ${t('cred_key_word')}</span>`);
+                    if (cveCount > 0) summaryParts.push(`<span class="text-amber-300 font-medium">${cveCount} CVE</span>`);
+                    if (ipCount > 0) summaryParts.push(`<span class="text-cyan-300">${ipCount} IP</span>`);
+                    if (domCount > 0) summaryParts.push(`<span class="text-gray-300">${domCount} Domain</span>`);
+                    if (!summaryParts.length) summaryParts.push(`<span class="text-gray-500">${t('text_evidence')}</span>`);
+
+                    const ruleIndicator = rules.length > 0
+                        ? `<span class="ml-2 px-1.5 py-0.5 text-[10px] rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">${rules.length} ${t('rules_word')}</span>`
+                        : '';
+
+                    const dedupIndicator = leak.occurrence_count > 1
+                        ? `<span class="ml-1.5 px-1.5 py-0.5 text-[10px] font-mono rounded bg-purple-500/15 text-purple-300 border border-purple-500/30">${leak.occurrence_count}x</span>`
+                        : '';
+
+                    const timeStr = new Date(leak.last_seen_at).toLocaleTimeString(currentLang === 'en' ? 'en-US' : 'tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+
+                    return `
+                    <tr onclick="openInspector(${idx})" class="hover:bg-gray-800/40 cursor-pointer transition group">
+                        <td class="py-3.5 px-4 whitespace-nowrap">
+                            ${severityBadge(leak.severity, leak.risk_score)}
+                        </td>
+                        <td class="py-3.5 px-4">
+                            <div class="font-semibold text-white group-hover:text-cyan-400 transition flex items-center flex-wrap gap-1">
+                                <span>${escapeHtml(leak.title)}</span>
+                                ${ruleIndicator}
+                                ${dedupIndicator}
+                            </div>
+                            <div class="text-[11px] text-gray-400 mt-0.5 flex items-center gap-1.5">
+                                <span class="font-mono text-[10px] text-cyan-400">${sourceLabel(leak.source_type)}</span>
+                                <span>${escapeHtml(leak.source_name)}</span>
+                            </div>
+                        </td>
+                        <td class="py-3.5 px-4 whitespace-nowrap">
+                            <span class="font-mono text-[11px] text-rose-300 bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 rounded">${escapeHtml(actor)}</span>
+                        </td>
+                        <td class="py-3.5 px-4 whitespace-nowrap">
+                            <span class="font-mono text-xs text-gray-300 bg-gray-800 px-2 py-0.5 rounded">${escapeHtml(country)}</span>
+                        </td>
+                        <td class="py-3.5 px-4 whitespace-nowrap text-[11px]">
+                            ${summaryParts.join(' <span class="text-gray-600">/</span> ')}
+                        </td>
+                        <td class="py-3.5 px-4 whitespace-nowrap text-right font-mono text-[11px] text-gray-400">
+                            ${timeStr}
+                        </td>
+                        <td class="py-3.5 px-4 whitespace-nowrap text-right">
+                            <span class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-gray-800 group-hover:bg-cyan-500 group-hover:text-gray-950 text-gray-300 transition">
+                                ${t('inspect_btn')}
+                            </span>
+                        </td>
+                    </tr>`;
+                }).join('');
+            } catch (e) {
+                console.error('Leaks error:', e);
+            }
+        }
+
+        function openInspector(idx) {
+            currentInspectedIdx = idx;
+            const leak = cachedLeaks[idx];
+            if (!leak) return;
+
+            const ent = leak.extracted_entities || {};
+            const rules = leak.matched_rules || [];
+            const seenSources = leak.seen_sources || [];
+
+            document.getElementById('inspIdBadge').textContent = `LEAK #${leak.id}`;
+            document.getElementById('inspSeverityBadge').innerHTML = severityBadge(leak.severity, leak.risk_score);
+            document.getElementById('inspStixBtn').href = `/api/leaks/${leak.id}/stix`;
+            document.getElementById('inspReportBtn').href = `/api/leaks/${leak.id}/report?lang=${currentLang}`;
+
+            const ipRows = (ent.ip_details || []).map(d =>
+                `<div class="flex items-center justify-between py-1.5 px-3 bg-gray-950 rounded border border-gray-800 text-xs font-mono">
+                    <span class="text-cyan-300">${escapeHtml(d.ip)}</span>
+                    <span class="text-gray-400">${escapeHtml(d.country)} | ${escapeHtml(d.isp)} ${escapeHtml(d.asn)}</span>
+                </div>`
+            ).join('') || (ent.ips || []).map(ip => `<span class="px-2 py-1 bg-gray-950 rounded border border-gray-800 text-xs font-mono text-cyan-300">${escapeHtml(ip)}</span>`).join('');
+
+            const credChips = [
+                ...(ent.credentials || []).map(c => `<div class="p-2 bg-red-950/30 border border-red-500/30 rounded text-xs font-mono text-red-300">[CRED] ${escapeHtml(c)}</div>`),
+                ...(ent.api_keys || []).map(k => `<div class="p-2 bg-purple-950/30 border border-purple-500/30 rounded text-xs font-mono text-purple-300">[KEY] ${escapeHtml(k)}</div>`),
+                ...(ent.high_entropy_secrets || []).map(h => `<div class="p-2 bg-pink-950/30 border border-pink-500/30 rounded text-xs font-mono text-pink-300">[SECRET] ${escapeHtml(h)}</div>`)
+            ].join('');
+
+            const domChips = (ent.domains || []).map(d => `<span class="px-2.5 py-1 bg-gray-950 border border-gray-800 rounded text-xs font-mono text-blue-300">${escapeHtml(d)}</span>`).join('');
+            const cveChips = (ent.cves || []).map(c => `<a href="https://nvd.nist.gov/vuln/detail/${encodeURIComponent(c)}" target="_blank" class="px-2.5 py-1 bg-amber-500/15 border border-amber-500/30 rounded text-xs font-mono text-amber-300 hover:underline">${escapeHtml(c)}</a>`).join('');
+
+            const ruleList = rules.map(r =>
+                `<div class="flex items-center justify-between p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs">
+                    <span class="font-semibold text-amber-300">${escapeHtml(r.rule_name)}</span>
+                    <span class="font-mono text-amber-200">${t('matched_word')}: "${escapeHtml(r.keyword)}" (+${r.risk_boost}p)</span>
+                </div>`
+            ).join('');
+
+            document.getElementById('inspectorBody').innerHTML = `
+                <div class="space-y-2">
+                    <div class="text-xs text-gray-400 flex items-center gap-2">
+                        <span class="font-mono text-cyan-400">${sourceLabel(leak.source_type)}</span>
+                        <span>${escapeHtml(leak.source_name)}</span>
+                        <span>|</span>
+                        <span class="font-mono">${new Date(leak.last_seen_at).toLocaleString(currentLang === 'en' ? 'en-US' : 'tr-TR')}</span>
+                    </div>
+                    <h2 class="text-lg font-bold text-white leading-snug">${escapeHtml(leak.title)}</h2>
+                </div>
+
+                <!-- Meta Kartları -->
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="p-3 rounded-lg bg-[#111827] border border-gray-800">
+                        <div class="text-[10px] uppercase text-gray-400">${t('insp_actor')}</div>
+                        <div class="text-xs font-bold text-rose-400 font-mono mt-1">${escapeHtml(ent.threat_actor || 'Unknown')}</div>
+                    </div>
+                    <div class="p-3 rounded-lg bg-[#111827] border border-gray-800">
+                        <div class="text-[10px] uppercase text-gray-400">${t('insp_country')}</div>
+                        <div class="text-xs font-bold text-indigo-300 font-mono mt-1">${escapeHtml(ent.victim_country || 'GLOBAL')}</div>
+                    </div>
+                    <div class="p-3 rounded-lg bg-[#111827] border border-gray-800">
+                        <div class="text-[10px] uppercase text-gray-400">${t('insp_dedup')}</div>
+                        <div class="text-xs font-bold text-purple-300 font-mono mt-1">${leak.occurrence_count} ${t('insp_seen_times')}</div>
+                    </div>
+                </div>
+
+                ${ruleList ? `<div class="space-y-2"><h4 class="text-xs font-bold uppercase tracking-wider text-gray-400">${t('insp_rules_hdr')}</h4>${ruleList}</div>` : ''}
+
+                ${credChips ? `<div class="space-y-2"><h4 class="text-xs font-bold uppercase tracking-wider text-gray-400">${t('insp_creds_hdr')}</h4><div class="space-y-1.5">${credChips}</div></div>` : ''}
+
+                ${cveChips ? `<div class="space-y-2"><h4 class="text-xs font-bold uppercase tracking-wider text-gray-400">${t('insp_cves_hdr')}</h4><div class="flex flex-wrap gap-2">${cveChips}</div></div>` : ''}
+
+                ${ipRows ? `<div class="space-y-2"><h4 class="text-xs font-bold uppercase tracking-wider text-gray-400">${t('insp_ips_hdr')}</h4><div class="space-y-1.5">${ipRows}</div></div>` : ''}
+
+                ${domChips ? `<div class="space-y-2"><h4 class="text-xs font-bold uppercase tracking-wider text-gray-400">${t('insp_doms_hdr')}</h4><div class="flex flex-wrap gap-1.5">${domChips}</div></div>` : ''}
+
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-gray-400">${t('insp_raw_hdr')}</h4>
+                        <span class="text-[11px] font-mono text-gray-500">SHA256: ${leak.content_hash.slice(0, 20)}...</span>
+                    </div>
+                    <pre class="p-4 rounded-xl bg-black/60 border border-gray-800 text-xs font-mono text-gray-200 whitespace-pre-wrap break-all leading-relaxed">${escapeHtml(leak.raw_content)}</pre>
+                </div>
+
+                <div class="p-3.5 rounded-xl bg-[#111827] border border-gray-800 space-y-1.5 text-xs">
+                    <div class="text-gray-400">${t('insp_src_url')} <code class="text-cyan-400 break-all">${escapeHtml(leak.source_url)}</code></div>
+                    <div class="text-gray-400">${t('insp_seen_srcs')} <span class="text-gray-200">${seenSources.map(s => escapeHtml(s.source_name)).join(' -> ')}</span></div>
+                </div>
+            `;
+
+            document.getElementById('inspectorBackdrop').classList.remove('hidden');
+            document.getElementById('inspectorDrawer').classList.remove('translate-x-full');
+        }
+
+        function closeInspector() {
+            document.getElementById('inspectorBackdrop').classList.add('hidden');
+            document.getElementById('inspectorDrawer').classList.add('translate-x-full');
+        }
+
+        async function fetchAlerts() {
+            try {
+                const res = await fetch('/api/alerts');
+                const alerts = await res.json();
+                const container = document.getElementById('alertsContainer');
+
+                if (!alerts.length) {
+                    container.innerHTML = `<div class="col-span-2 text-xs text-gray-500 text-center py-12 bg-[#111827] border border-gray-800 rounded-xl">${t('no_cases')}</div>`;
+                    return;
+                }
+
+                const statusStyles = {
+                    OPEN: 'bg-[#111827] border-red-500/40',
+                    INVESTIGATING: 'bg-[#111827] border-amber-500/40',
+                    RESOLVED: 'bg-[#111827]/60 border-gray-800 opacity-70',
+                    FALSE_POSITIVE: 'bg-[#111827]/40 border-gray-800 opacity-55'
+                };
+
+                container.innerHTML = alerts.map(a => {
+                    const st = a.status || 'OPEN';
+                    const cardCls = statusStyles[st] || statusStyles.OPEN;
+                    return `
+                    <div class="p-4 rounded-xl border ${cardCls} space-y-3 flex flex-col justify-between">
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="text-xs font-bold text-white">${t('case_word')} #${a.id} | ${escapeHtml(a.rule_name)}</span>
+                                <select onchange="updateAlertCase(${a.id}, this.value)" class="bg-[#0b0f17] border border-gray-700 rounded-lg px-2.5 py-1 text-xs font-semibold text-cyan-300 focus:outline-none">
+                                    <option value="OPEN" ${st === 'OPEN' ? 'selected' : ''}>OPEN</option>
+                                    <option value="INVESTIGATING" ${st === 'INVESTIGATING' ? 'selected' : ''}>INVESTIGATING</option>
+                                    <option value="RESOLVED" ${st === 'RESOLVED' ? 'selected' : ''}>RESOLVED</option>
+                                    <option value="FALSE_POSITIVE" ${st === 'FALSE_POSITIVE' ? 'selected' : ''}>FALSE POSITIVE</option>
+                                </select>
+                            </div>
+                            <p class="text-xs text-gray-300 leading-relaxed">${escapeHtml(a.message)}</p>
+                        </div>
+                        <div class="flex items-center gap-2 pt-2 border-t border-gray-800/80">
+                            <input type="text" id="note-${a.id}" value="${escapeHtml(a.analyst_note || '')}" placeholder="${t('note_placeholder')}" class="flex-1 bg-[#0b0f17] border border-gray-800 rounded-lg px-3 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-cyan-500" />
+                            <button onclick="saveAlertNote(${a.id}, '${st}')" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-xs font-medium rounded-lg text-gray-200 transition">${t('save_note_btn')}</button>
+                        </div>
+                    </div>`;
+                }).join('');
+            } catch (e) {
+                console.error('Alerts error:', e);
+            }
+        }
+
+        async function updateAlertCase(id, newStatus) {
+            const noteEl = document.getElementById(`note-${id}`);
+            const note = noteEl ? noteEl.value : '';
+            await fetch(`/api/alerts/${id}/case`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus, analyst_note: note })
+            });
+            fetchAlerts();
+            fetchStats();
+        }
+
+        async function saveAlertNote(id, currentStatus) {
+            const noteEl = document.getElementById(`note-${id}`);
+            const note = noteEl ? noteEl.value : '';
+            await fetch(`/api/alerts/${id}/case`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: currentStatus, analyst_note: note })
+            });
+            fetchAlerts();
+        }
+
+        async function fetchRules() {
+            try {
+                const res = await fetch('/api/rules');
+                const rules = await res.json();
+                const container = document.getElementById('rulesContainer');
+                container.innerHTML = rules.map(r => `
+                    <div class="flex items-center justify-between px-5 py-3.5 hover:bg-gray-800/30 transition">
+                        <div>
+                            <div class="text-xs font-semibold text-white">${escapeHtml(r.rule_name)} <span class="text-[10px] font-mono text-cyan-400 ml-1.5 px-1.5 py-0.5 rounded bg-cyan-500/10">${escapeHtml(r.category)}</span></div>
+                            <div class="text-xs font-mono text-amber-300 mt-0.5">${t('matched_word')}: "${escapeHtml(r.keyword)}" <span class="text-gray-500 ml-2">(+${r.risk_boost} ${t('risk_pts_word')})</span></div>
+                        </div>
+                        <button onclick="deleteRule(${r.id})" class="px-2.5 py-1 rounded bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs transition">${t('remove_btn')}</button>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error('Rules error:', e);
+            }
+        }
+
+        async function addWatchRule(e) {
+            e.preventDefault();
+            const payload = {
+                rule_name: document.getElementById('ruleName').value,
+                keyword: document.getElementById('ruleKeyword').value,
+                category: document.getElementById('ruleCategory').value,
+                risk_boost: parseInt(document.getElementById('ruleBoost').value, 10) || 35
+            };
+            await fetch('/api/rules', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            document.getElementById('ruleName').value = '';
+            document.getElementById('ruleKeyword').value = '';
+            fetchRules();
+            fetchStats();
+        }
+
+        async function deleteRule(id) {
+            await fetch(`/api/rules/${id}`, { method: 'DELETE' });
+            fetchRules();
+            fetchStats();
+        }
+
+        async function fetchTargets() {
+            try {
+                const res = await fetch('/api/targets');
+                const targets = await res.json();
+                document.getElementById('navBadgeTargets').textContent = targets.length;
+                const container = document.getElementById('targetsContainer');
+                if (!targets.length) {
+                    container.innerHTML = `<div class="text-xs text-gray-500 text-center py-8">—</div>`;
+                    return;
+                }
+                container.innerHTML = targets.map(tObj => {
+                    const statusColor = (tObj.last_status || '').startsWith('OK')
+                        ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30'
+                        : (tObj.last_status || '').startsWith('ERR')
+                        ? 'text-red-400 bg-red-500/10 border-red-500/30'
+                        : 'text-amber-300 bg-amber-500/10 border-amber-500/30';
+                    return `
+                    <div class="px-5 py-3.5 flex flex-wrap items-center justify-between gap-4 hover:bg-gray-800/30 transition">
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-2">
+                                <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-gray-800 text-cyan-400">${tObj.use_tor ? 'TOR' : 'DIRECT'}</span>
+                                <span class="text-xs font-semibold text-white">${escapeHtml(tObj.name)}</span>
+                                <span class="px-2 py-0.5 rounded text-[10px] font-mono border ${statusColor}">${escapeHtml(tObj.last_status || 'PENDING')}</span>
+                            </div>
+                            <div class="text-xs font-mono text-gray-400 truncate mt-1">${escapeHtml(tObj.url)}</div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="scanTargetNow(${tObj.id})" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 transition">${t('scan_now_btn')}</button>
+                            <button onclick="deleteTarget(${tObj.id})" class="px-2.5 py-1.5 rounded-lg text-xs text-gray-400 hover:text-red-400 hover:bg-gray-800 transition">${t('delete_btn')}</button>
+                        </div>
+                    </div>`;
+                }).join('');
+            } catch (e) {
+                console.error('Targets error:', e);
+            }
+        }
+
+        async function addScraperTarget(e) {
+            e.preventDefault();
+            const payload = {
+                name: document.getElementById('targetName').value,
+                url: document.getElementById('targetUrl').value,
+                target_type: 'darkweb_forum',
+                use_tor: document.getElementById('targetUseTor').checked,
+                interval_seconds: 180
+            };
+            await fetch('/api/targets', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            document.getElementById('targetName').value = '';
+            document.getElementById('targetUrl').value = '';
+            fetchTargets();
+        }
+
+        async function scanTargetNow(id) {
+            await fetch(`/api/targets/${id}/scan`, { method: 'POST' });
+            fetchTargets();
+        }
+
+        async function deleteTarget(id) {
+            await fetch(`/api/targets/${id}`, { method: 'DELETE' });
+            fetchTargets();
+        }
+
+        async function checkTorStatus() {
+            const textEl = document.getElementById('torStatusText');
+            textEl.textContent = currentLang === 'en' ? 'Testing Tor Circuits...' : 'Tor Düğümleri Test Ediliyor...';
+            try {
+                const res = await fetch('/api/tor-check');
+                const data = await res.json();
+                if (data.connected && data.is_tor) {
+                    textEl.textContent = `Tor OK | Exit: ${data.exit_ip}`;
+                } else if (data.connected) {
+                    textEl.textContent = `Proxy IP: ${data.exit_ip}`;
+                } else {
+                    textEl.textContent = currentLang === 'en' ? 'Bootstrapping Circuit...' : 'Tor Devresi Hazırlanıyor...';
+                }
+            } catch (e) {
+                textEl.textContent = currentLang === 'en' ? 'Connection Error' : 'Bağlantı Hatası';
+            }
+        }
+
+        function openInjectModal() {
+            document.getElementById('injectModal').classList.remove('hidden');
+            document.getElementById('injectModal').classList.add('flex');
+        }
+
+        function closeInjectModal() {
+            document.getElementById('injectModal').classList.add('hidden');
+            document.getElementById('injectModal').classList.remove('flex');
+        }
+
+        async function submitManualInject(e) {
+            e.preventDefault();
+            const payload = {
+                title: document.getElementById('injTitle').value,
+                source_type: document.getElementById('injSourceType').value,
+                source_name: document.getElementById('injSourceName').value,
+                source_url: 'http://manual-soc-inject.onion/post/' + Math.floor(Math.random() * 9999),
+                raw_content: document.getElementById('injContent').value
+            };
+            await fetch('/api/inject', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            closeInjectModal();
+            setTimeout(refreshAll, 1200);
+        }
+
+        function debounceFetchLeaks() {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(fetchLeaks, 300);
+        }
+
+        function refreshAll() {
+            fetchStats();
+            fetchLeaks();
+            fetchAlerts();
+            fetchRules();
+            fetchTargets();
+        }
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') closeInspector();
+        });
+
+        setLanguage(currentLang);
+        setInterval(() => {
+            fetchStats();
+            fetchLeaks();
+            fetchTargets();
+        }, 6000);
+    </script>
+</body>
+</html>
