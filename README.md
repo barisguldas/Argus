@@ -12,6 +12,8 @@
 
 > **Bilingual Interface (TR / EN):** Argus features a built-in real-time language switcher (`TR` / `EN`) in the SOC Web Dashboard and generates both Turkish and English executive incident reports.
 
+
+<img width="1918" height="897" alt="resim" src="https://github.com/user-attachments/assets/51a33641-c402-4837-879f-7d3fd980f52f" />
 ---
 
 ## System Architecture / Sistem Mimarisi
